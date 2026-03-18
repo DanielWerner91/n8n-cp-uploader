@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "CP Uploader",
-  description: "Convert savings trackers to Connected Platform bulk upload format",
+  description:
+    "Convert savings trackers to Connected Platform bulk upload format",
 };
 
 export default function RootLayout({
@@ -12,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );

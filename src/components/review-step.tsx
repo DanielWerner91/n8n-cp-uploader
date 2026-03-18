@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ChevronDown,
   ChevronRight,
   AlertTriangle,
   Pencil,
   Check,
+  X,
+  Info,
 } from "lucide-react";
 import type { ExtractionResult, ExtractedInitiative } from "@/lib/types";
+import { ShimmerButton } from "@/components/ui/shimmer-button";
+import { cn } from "@/lib/utils";
 
 interface ReviewStepProps {
   result: ExtractionResult;
@@ -54,73 +59,108 @@ export function ReviewStep({ result, onGenerate, onBack }: ReviewStepProps) {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-6">
-        <h2 className="mb-1 text-2xl font-semibold">Review Extracted Data</h2>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <h2 className="mb-2 text-2xl font-bold tracking-tight">
+          Review <span className="gradient-text">Extracted Data</span>
+        </h2>
         <p className="text-[var(--muted-foreground)]">
-          {editedResult.initiatives.length} initiatives extracted from{" "}
-          <span className="font-medium text-[var(--foreground)]">
+          <span className="font-semibold text-[var(--foreground)]">
+            {editedResult.initiatives.length} initiatives
+          </span>{" "}
+          extracted from{" "}
+          <span className="font-semibold text-[var(--foreground)]">
             {editedResult.projectName}
           </span>
           . Review and edit before generating the CP upload file.
         </p>
-      </div>
+      </motion.div>
 
       {/* Warnings */}
-      {editedResult.warnings.length > 0 && (
-        <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
-          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-yellow-800 dark:text-yellow-200">
-            <AlertTriangle className="h-4 w-4" />
-            Warnings
-          </div>
-          <ul className="space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
-            {editedResult.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <AnimatePresence>
+        {editedResult.warnings.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mb-4 overflow-hidden rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4"
+          >
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-yellow-400">
+              <AlertTriangle className="h-4 w-4" />
+              Warnings
+            </div>
+            <ul className="space-y-1 text-sm text-yellow-300/80">
+              {editedResult.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Missing IDs alert */}
       {missingIds.length > 0 && (
-        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-6 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex items-start gap-3"
+        >
+          <Info className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-blue-300/90">
             <strong>{missingIds.length} initiative(s)</strong> are missing CP
             Initiative IDs. You can add them below, or leave blank and fill them
             in the downloaded file.
           </p>
-        </div>
+        </motion.div>
       )}
 
       {/* Initiatives list */}
       <div className="space-y-3">
-        {editedResult.initiatives.map((initiative) => (
-          <InitiativeCard
+        {editedResult.initiatives.map((initiative, index) => (
+          <motion.div
             key={initiative.id}
-            initiative={initiative}
-            isExpanded={expandedIds.has(initiative.id)}
-            onToggle={() => toggleExpanded(initiative.id)}
-            onUpdate={(updates) => updateInitiative(initiative.id, updates)}
-            onRemove={() => removeInitiative(initiative.id)}
-          />
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 * Math.min(index, 10) }}
+          >
+            <InitiativeCard
+              initiative={initiative}
+              isExpanded={expandedIds.has(initiative.id)}
+              onToggle={() => toggleExpanded(initiative.id)}
+              onUpdate={(updates) => updateInitiative(initiative.id, updates)}
+              onRemove={() => removeInitiative(initiative.id)}
+            />
+          </motion.div>
         ))}
       </div>
 
       {/* Actions */}
-      <div className="mt-8 flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="mt-8 flex items-center justify-between"
+      >
         <button
           onClick={onBack}
-          className="rounded-lg px-4 py-2 text-sm text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)]"
+          className="rounded-xl px-4 py-2.5 text-sm text-[var(--muted-foreground)] transition-all hover:bg-[var(--muted)] hover:text-[var(--foreground)] border border-[var(--border)]"
         >
           Back to Upload
         </button>
-        <button
+        <ShimmerButton
           onClick={() => onGenerate(editedResult)}
           disabled={editedResult.initiatives.length === 0}
-          className="rounded-lg bg-[var(--primary)] px-6 py-2.5 font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+          shimmerColor="#60a5fa"
+          background="rgba(59, 130, 246, 0.9)"
+          borderRadius="12px"
+          className="text-sm font-semibold !text-white disabled:opacity-50"
         >
           Generate CP Upload File
-        </button>
-      </div>
+        </ShimmerButton>
+      </motion.div>
     </div>
   );
 }
@@ -147,13 +187,23 @@ function InitiativeCard({
     setEditingId(false);
   };
 
+  const statusColor = {
+    Complete:
+      "bg-green-500/10 text-green-400 ring-1 ring-green-500/20",
+    Active:
+      "bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20",
+    Cancelled:
+      "bg-red-500/10 text-red-400 ring-1 ring-red-500/20",
+  }[initiative.status] ||
+    "bg-gray-500/10 text-gray-400 ring-1 ring-gray-500/20";
+
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--background)]">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-sm transition-all hover:border-[var(--primary)]/20">
       {/* Header */}
       <div className="flex items-center gap-3 p-4">
         <button
           onClick={onToggle}
-          className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+          className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
         >
           {isExpanded ? (
             <ChevronDown className="h-4 w-4" />
@@ -163,29 +213,26 @@ function InitiativeCard({
         </button>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium">{initiative.name}</span>
             <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                initiative.status === "Complete"
-                  ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                  : initiative.status === "Active"
-                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-                    : initiative.status === "Cancelled"
-                      ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                      : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-              }`}
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                statusColor
+              )}
             >
               {initiative.status}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
-            <span>{initiative.division}</span>
-            <span>
-              {initiative.l1Category}
-              {initiative.l2Category ? ` > ${initiative.l2Category}` : ""}
-            </span>
-            <span>
+            {initiative.division && <span>{initiative.division}</span>}
+            {initiative.l1Category && (
+              <span>
+                {initiative.l1Category}
+                {initiative.l2Category ? ` > ${initiative.l2Category}` : ""}
+              </span>
+            )}
+            <span className="text-[var(--primary)]">
               {initiative.profiles.length} profile(s)
             </span>
           </div>
@@ -200,13 +247,13 @@ function InitiativeCard({
                 value={idValue}
                 onChange={(e) => setIdValue(e.target.value)}
                 placeholder="Paste CP Initiative ID"
-                className="w-64 rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-xs font-mono"
+                className="w-64 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-xs font-mono focus:border-[var(--primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/50"
                 onKeyDown={(e) => e.key === "Enter" && saveId()}
                 autoFocus
               />
               <button
                 onClick={saveId}
-                className="rounded p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                className="rounded-lg p-1.5 text-green-400 hover:bg-green-500/10 transition-colors"
               >
                 <Check className="h-4 w-4" />
               </button>
@@ -214,11 +261,12 @@ function InitiativeCard({
           ) : (
             <button
               onClick={() => setEditingId(true)}
-              className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-all",
                 hasId
                   ? "font-mono text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
                   : "border border-dashed border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
-              }`}
+              )}
             >
               {hasId ? (
                 <>
@@ -237,140 +285,172 @@ function InitiativeCard({
 
         <button
           onClick={onRemove}
-          className="rounded p-1 text-xs text-[var(--muted-foreground)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+          className="rounded-lg p-1.5 text-[var(--muted-foreground)] hover:bg-red-500/10 hover:text-red-400 transition-colors"
           title="Remove initiative"
         >
-          &times;
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {/* Expanded details */}
-      {isExpanded && (
-        <div className="border-t border-[var(--border)] px-4 py-3">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
-                Name
-              </label>
-              <input
-                type="text"
-                value={initiative.name}
-                onChange={(e) => onUpdate({ name: e.target.value })}
-                className="w-full rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
-                Status
-              </label>
-              <select
-                value={initiative.status}
-                onChange={(e) => onUpdate({ status: e.target.value })}
-                className="w-full rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-              >
-                <option>Complete</option>
-                <option>Active</option>
-                <option>Cancelled</option>
-                <option>Pilot / Ramp up</option>
-                <option>Track</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
-                Methodology
-              </label>
-              <select
-                value={initiative.methodology}
-                onChange={(e) => onUpdate({ methodology: e.target.value })}
-                className="w-full rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-              >
-                <option>Complex Sourcing</option>
-                <option>Simple Sourcing</option>
-                <option>Demand Management</option>
-                <option>Project CP Set-up and Management</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
-                Owner Email
-              </label>
-              <input
-                type="email"
-                value={initiative.ownerEmail}
-                onChange={(e) => onUpdate({ ownerEmail: e.target.value })}
-                className="w-full rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-              />
-            </div>
-          </div>
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-[var(--border)] px-4 py-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={initiative.name}
+                    onChange={(e) => onUpdate({ name: e.target.value })}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/50"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Status
+                  </label>
+                  <select
+                    value={initiative.status}
+                    onChange={(e) => onUpdate({ status: e.target.value })}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
+                  >
+                    <option>Complete</option>
+                    <option>Active</option>
+                    <option>Cancelled</option>
+                    <option>Pilot / Ramp up</option>
+                    <option>Track</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Methodology
+                  </label>
+                  <select
+                    value={initiative.methodology}
+                    onChange={(e) =>
+                      onUpdate({ methodology: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
+                  >
+                    <option>Complex Sourcing</option>
+                    <option>Simple Sourcing</option>
+                    <option>Demand Management</option>
+                    <option>Project CP Set-up and Management</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Owner Email
+                  </label>
+                  <input
+                    type="email"
+                    value={initiative.ownerEmail}
+                    onChange={(e) =>
+                      onUpdate({ ownerEmail: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/50"
+                  />
+                </div>
+              </div>
 
-          {/* Profiles */}
-          {initiative.profiles.length > 0 && (
-            <div className="mt-4">
-              <h4 className="mb-2 text-xs font-semibold text-[var(--muted-foreground)] uppercase">
-                Savings Profiles ({initiative.profiles.length})
-              </h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-[var(--border)] text-left text-[var(--muted-foreground)]">
-                      <th className="pb-2 pr-3 font-medium">Profile</th>
-                      <th className="pb-2 pr-3 font-medium">Status</th>
-                      <th className="pb-2 pr-3 font-medium">Methodology</th>
-                      <th className="pb-2 pr-3 font-medium text-right">
-                        Annualised Savings
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {initiative.profiles.map((p, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-[var(--border)] last:border-0"
+              {/* Profiles */}
+              {initiative.profiles.length > 0 && (
+                <div className="mt-5">
+                  <h4 className="mb-3 text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Savings Profiles ({initiative.profiles.length})
+                  </h4>
+                  <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] bg-[var(--muted)]/50 text-left text-[var(--muted-foreground)]">
+                          <th className="px-3 py-2.5 font-medium">Profile</th>
+                          <th className="px-3 py-2.5 font-medium">Status</th>
+                          <th className="px-3 py-2.5 font-medium">
+                            Methodology
+                          </th>
+                          <th className="px-3 py-2.5 font-medium text-right">
+                            Annualised Savings
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {initiative.profiles.map((p, i) => (
+                          <tr
+                            key={i}
+                            className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)]/30 transition-colors"
+                          >
+                            <td className="px-3 py-2.5">{p.profileName}</td>
+                            <td className="px-3 py-2.5">{p.status}</td>
+                            <td className="px-3 py-2.5">
+                              {p.savingsMethodology}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-mono text-[var(--foreground)]">
+                              ${p.annualisedSavings.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Baseline */}
+              {initiative.baseline && (
+                <div className="mt-5">
+                  <h4 className="mb-3 text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Baseline
+                  </h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      {
+                        label: "Name",
+                        value: initiative.baseline.baselineName,
+                      },
+                      {
+                        label: "Annualised",
+                        value: `$${initiative.baseline.annualisedBaseline.toLocaleString()}`,
+                        mono: true,
+                      },
+                      {
+                        label: "Expenditure",
+                        value: initiative.baseline.expenditure,
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-lg bg-[var(--muted)]/50 p-3"
                       >
-                        <td className="py-2 pr-3">{p.profileName}</td>
-                        <td className="py-2 pr-3">{p.status}</td>
-                        <td className="py-2 pr-3">{p.savingsMethodology}</td>
-                        <td className="py-2 pr-3 text-right font-mono">
-                          ${p.annualisedSavings.toLocaleString()}
-                        </td>
-                      </tr>
+                        <p className="text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-1">
+                          {item.label}
+                        </p>
+                        <p
+                          className={cn(
+                            "text-sm",
+                            item.mono && "font-mono"
+                          )}
+                        >
+                          {item.value}
+                        </p>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Baseline */}
-          {initiative.baseline && (
-            <div className="mt-4">
-              <h4 className="mb-2 text-xs font-semibold text-[var(--muted-foreground)] uppercase">
-                Baseline
-              </h4>
-              <div className="grid grid-cols-3 gap-3 text-xs">
-                <div>
-                  <span className="text-[var(--muted-foreground)]">Name:</span>{" "}
-                  {initiative.baseline.baselineName}
-                </div>
-                <div>
-                  <span className="text-[var(--muted-foreground)]">
-                    Annualised:
-                  </span>{" "}
-                  <span className="font-mono">
-                    ${initiative.baseline.annualisedBaseline.toLocaleString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[var(--muted-foreground)]">
-                    Expenditure:
-                  </span>{" "}
-                  {initiative.baseline.expenditure}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
