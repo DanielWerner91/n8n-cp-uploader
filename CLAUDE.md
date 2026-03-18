@@ -160,10 +160,19 @@ N8N_WEBHOOK_URL=<webhook URL for the n8n workflow>
 - **Trigger:** Webhook (POST) receiving the tracker file + user inputs
 - **Response:** JSON with extracted/mapped data, or the generated Excel file
 
+## Deployment
+
+- **Repo:** github.com/DanielWerner91/n8n-cp-uploader
+- **Vercel Project ID:** `prj_0mrXLXDbxDeesUwskkmoIh4BaQAe`
+- **n8n Workflow ID:** `JluACaLzSkTKO5JZ` (CP Uploader - Extract Initiatives)
+- **n8n Webhook Path:** `/webhook/cp-uploader-extract`
+- **AI Model:** Claude Sonnet 4.5 via OpenRouter (credential `tHsRwS21jrrCYek6`)
+
 ## Status
 
-- [ ] Project scaffolded
-- [ ] n8n workflow created
-- [ ] Frontend built
-- [ ] Deployed to Vercel
+- [x] Project scaffolded
+- [x] n8n workflow created
+- [x] Frontend built
+- [x] Deployed to Vercel
+- [ ] n8n workflow activated (must toggle in n8n UI)
 - [ ] Tested with Enviri tracker example
