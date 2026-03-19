@@ -57,6 +57,19 @@ CRITICAL — Missing data handling:
 - Add a warning for EVERY field where you had to use a default/zero because the source data was missing or ambiguous
 - The warnings array is critical — it tells the user what needs manual review. Be thorough.
 
+CRITICAL — Column disambiguation:
+- Trackers often have MULTIPLE numeric columns that could look like savings (e.g. "Planned Savings", "Total Savings", "Cost Avoidance", "P&L Impact", plus random/internal columns)
+- Do NOT just pick the first numeric column that looks like money. Analyze ALL column headers carefully.
+- Ignore columns with nonsensical, internal, or unrecognizable headers — they are likely tracker-specific metadata, not savings data
+- When multiple legitimate savings columns exist, map them to the RIGHT CP fields:
+  - "Annualised savings" or "Total savings" or "Realised savings" → annualisedSavings in profiles
+  - "Baseline" or "Baseline spend" or "Current spend" → annualisedBaseline
+  - "Cost avoidance" → flag as a different savings type in warnings (CP tracks this separately)
+  - "P&L impact" → flag in warnings as supplementary metric, not the primary savings figure
+  - "Planned" or "Target" or "Estimated" savings → map to targets (lowTarget/midTarget/highTarget), NOT to actual savings
+- If you cannot confidently determine which column is the primary savings figure, set annualisedSavings to 0 AND add a warning listing ALL candidate columns so the user can choose
+- Always add a warning stating which column you used for savings: "Used column 'X' as primary savings figure"
+
 Data:
 `;
 
