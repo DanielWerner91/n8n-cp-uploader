@@ -61,14 +61,25 @@ CRITICAL — Column disambiguation:
 - Trackers often have MULTIPLE numeric columns that could look like savings (e.g. "Planned Savings", "Total Savings", "Cost Avoidance", "P&L Impact", plus random/internal columns)
 - Do NOT just pick the first numeric column that looks like money. Analyze ALL column headers carefully.
 - Ignore columns with nonsensical, internal, or unrecognizable headers — they are likely tracker-specific metadata, not savings data
-- When multiple legitimate savings columns exist, map them to the RIGHT CP fields:
-  - "Annualised savings" or "Total savings" or "Realised savings" → annualisedSavings in profiles
-  - "Baseline" or "Baseline spend" or "Current spend" → annualisedBaseline
-  - "Cost avoidance" → flag as a different savings type in warnings (CP tracks this separately)
-  - "P&L impact" → flag in warnings as supplementary metric, not the primary savings figure
-  - "Planned" or "Target" or "Estimated" savings → map to targets (lowTarget/midTarget/highTarget), NOT to actual savings
-- If you cannot confidently determine which column is the primary savings figure, set annualisedSavings to 0 AND add a warning listing ALL candidate columns so the user can choose
-- Always add a warning stating which column you used for savings: "Used column 'X' as primary savings figure"
+- Always add a warning stating which columns you identified and how you mapped them
+
+CRITICAL — Savings profiles (MOST IMPORTANT):
+- In Connected Platform, different savings types are tracked as SEPARATE PROFILES under the same initiative
+- When a tracker has columns like "Cost Avoidance Savings" AND "P&L Impact Savings", these are NOT alternative measures of the same thing — they are DIFFERENT savings profiles that must each become their own entry in the profiles array
+- Example: if initiative CS-001 has Cost Avoidance = $40k and P&L Impact = $200k, output TWO profiles:
+  [{"profileName": "P&L Impact Savings", "annualisedSavings": 200000, ...}, {"profileName": "Cost Avoidance Savings", "annualisedSavings": 40000, ...}]
+- "Total Savings" is usually the SUM of all profile types — do NOT create a separate profile for it. Instead, verify: Total Savings should roughly equal the sum of the individual profile columns. If it does not, add a warning.
+- Common profile types to look for: "P&L Impact", "Cost Avoidance", "Cost Mitigation", "Value Creation", "Volume Rebate", "Payment Terms"
+- If only ONE savings column exists (e.g. just "Total Savings"), create one profile with that value
+- If multiple savings-type columns exist, create one profile PER type
+
+Column mapping guide:
+- "Baseline spend" / "Current spend" / "Estimated baseline" → baseline.annualisedBaseline
+- "Addressable spend" / "Estimated addressable" → targets.addressableBaselineEstimate
+- "Estimated savings low/mid/high" → targets.lowTarget/midTarget/highTarget
+- "Planned savings" / "Target savings" → targets, NOT actual savings profiles
+- "Total savings" → cross-check sum, not a separate profile
+- If you cannot confidently determine the column mapping, set values to 0 AND add a warning listing ALL candidate columns
 
 Data:
 `;
