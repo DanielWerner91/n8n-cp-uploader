@@ -1,4 +1,11 @@
 import ExcelJS from "exceljs";
+import type {
+  ExtractionResult,
+  ExtractedInitiative,
+  ExtractedProfile,
+  ExtractedBaseline,
+  ExtractedTargets,
+} from "./types";
 
 export interface ParsedSheet {
   name: string;
@@ -121,4 +128,165 @@ export function workbookToPromptText(parsed: ParsedWorkbook): string {
   }
 
   return text;
+}
+
+/**
+ * Parse a CP bulk uploader export into an ExtractionResult.
+ * The CP format has a known fixed structure: headers at row 6, data from row 7,
+ * columns starting at B (index 2 in ExcelJS 1-based arrays).
+ */
+export function parseCpExport(parsed: ParsedWorkbook): ExtractionResult {
+  const findSheet = (name: string) =>
+    parsed.sheets.find((s) => s.name.toLowerCase().includes(name.toLowerCase()));
+
+  const initSheet = findSheet("Initiatives");
+  const dteSheet = findSheet("Dates, Targets");
+  const basSheet = findSheet("Baselines");
+  const profSheet = findSheet("Profiles");
+
+  if (!initSheet) {
+    return {
+      projectName: parsed.fileName.replace(/\.[^.]+$/, ""),
+      initiatives: [],
+      warnings: ["Could not find 'Initiatives' sheet in CP export. Is this a valid CP bulk uploader file?"],
+      rawSummary: "Failed to parse CP export",
+    };
+  }
+
+  // Build initiative map from Initiatives sheet
+  const initiatives: ExtractedInitiative[] = [];
+  const initiativeById = new Map<string, ExtractedInitiative>();
+
+  for (const row of initSheet.rows) {
+    const cpId = str(row["Initiative ID"]);
+    const name = str(row["Initiative"]);
+    if (!cpId && !name) continue;
+
+    const init: ExtractedInitiative = {
+      id: `cp-${initiatives.length + 1}`,
+      cpInitiativeId: cpId,
+      name,
+      status: str(row["Initiative Status"]),
+      methodology: str(row["Methodology"]),
+      ownerEmail: str(row["Owner Email"]),
+      division: "",
+      l1Category: "",
+      l2Category: "",
+      l3Category: "",
+      profiles: [],
+      baseline: null,
+      targets: null,
+    };
+
+    initiatives.push(init);
+    if (cpId) initiativeById.set(cpId, init);
+  }
+
+  // Populate targets from Dates, Targets & Estimates sheet
+  if (dteSheet) {
+    for (const row of dteSheet.rows) {
+      const cpId = str(row["Initiative ID"]);
+      const init = cpId ? initiativeById.get(cpId) : findByName(initiatives, str(row["Initiative"]));
+      if (!init) continue;
+
+      init.targets = {
+        benefitName: str(row["Benefit Name"]) || "Savings",
+        fyStartMonth: str(row["Financial year start month"]),
+        reportingPeriod: str(row["Benefit Reporting Period"]) || "Monthly",
+        unitOfMeasurement: str(row["Unit Of Measurement"]) || "USD",
+        inYearStartDate: str(row["In-year start date"]),
+        inYearEndDate: str(row["In-year end date"]),
+        totalBaselineEstimate: num(row["Total Baseline Estimate"]),
+        addressableBaselineEstimate: num(row["Addressable Baseline Estimate"]),
+        lowTarget: num(row["Low Target"]),
+        midTarget: num(row["Mid Target"]),
+        highTarget: num(row["High Target"]),
+      };
+    }
+  }
+
+  // Populate baselines from Savings | Baselines sheet
+  if (basSheet) {
+    for (const row of basSheet.rows) {
+      const cpId = str(row["Initiative ID"]);
+      const init = cpId ? initiativeById.get(cpId) : findByName(initiatives, str(row["Initiative"]));
+      if (!init) continue;
+
+      // Find the FY columns dynamically (they contain "Baseline FY")
+      const fy1Key = Object.keys(row).find((k) => k.includes("Baseline FY") && k !== "Annualised Baseline");
+      const fy2Key = Object.keys(row).find((k) => k.includes("Baseline FY") && k !== fy1Key && k !== "Annualised Baseline");
+
+      init.baseline = {
+        baselineName: str(row["Baseline Name"]),
+        expenditure: str(row["Expenditure"]),
+        workstream: str(row["Workstream"]),
+        businessUnit: str(row["Business Unit"]),
+        annualisedBaseline: num(row["Annualised Baseline"]),
+        baselineFY1: fy1Key ? num(row[fy1Key]) : 0,
+        baselineFY2: fy2Key ? num(row[fy2Key]) : 0,
+      };
+    }
+  }
+
+  // Populate profiles from Savings | Profiles sheet
+  if (profSheet) {
+    // Identify monthly columns (anything after "Annualised Savings" that looks like a date)
+    const knownFields = new Set([
+      "Initiative ID", "Initiative", "Profile Name", "Status",
+      "Link With Baseline", "Annualised Baseline", "Expenditure",
+      "Type", "Savings Methodology", "Workstream", "Business Unit",
+      "Sign-Off Date", "Annualised Savings",
+    ]);
+    const monthColumns = profSheet.headers.filter((h) => !knownFields.has(h) && h !== "");
+
+    for (const row of profSheet.rows) {
+      const cpId = str(row["Initiative ID"]);
+      const init = cpId ? initiativeById.get(cpId) : findByName(initiatives, str(row["Initiative"]));
+      if (!init) continue;
+
+      const monthlySavings = monthColumns.length >= 12
+        ? monthColumns.slice(0, 12).map((col) => num(row[col]))
+        : Array(12).fill(0);
+
+      const profile: ExtractedProfile = {
+        profileName: str(row["Profile Name"]),
+        status: str(row["Status"]),
+        linkWithBaseline: str(row["Link With Baseline"]),
+        annualisedBaseline: num(row["Annualised Baseline"]),
+        expenditure: str(row["Expenditure"]),
+        type: str(row["Type"]),
+        savingsMethodology: str(row["Savings Methodology"]),
+        workstream: str(row["Workstream"]),
+        businessUnit: str(row["Business Unit"]),
+        signOffDate: str(row["Sign-Off Date"]),
+        annualisedSavings: num(row["Annualised Savings"]),
+        monthlySavings,
+      };
+
+      init.profiles.push(profile);
+    }
+  }
+
+  return {
+    projectName: parsed.fileName.replace(/\.[^.]+$/, ""),
+    initiatives,
+    warnings: [],
+    rawSummary: `Parsed ${initiatives.length} initiatives from CP export`,
+  };
+}
+
+function str(val: string | number | null | undefined): string {
+  if (val === null || val === undefined) return "";
+  return String(val).trim();
+}
+
+function num(val: string | number | null | undefined): number {
+  if (val === null || val === undefined) return 0;
+  const n = typeof val === "number" ? val : parseFloat(String(val));
+  return isNaN(n) ? 0 : n;
+}
+
+function findByName(initiatives: ExtractedInitiative[], name: string): ExtractedInitiative | undefined {
+  if (!name) return undefined;
+  return initiatives.find((i) => i.name === name);
 }

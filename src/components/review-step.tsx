@@ -10,8 +10,12 @@ import {
   Check,
   X,
   Info,
+  GitMerge,
+  Plus,
+  Minus,
+  ArrowRight,
 } from "lucide-react";
-import type { ExtractionResult, ExtractedInitiative } from "@/lib/types";
+import type { ExtractionResult, ExtractedInitiative, ChangeReport } from "@/lib/types";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +28,9 @@ interface ReviewStepProps {
 export function ReviewStep({ result, onGenerate, onBack }: ReviewStepProps) {
   const [editedResult, setEditedResult] = useState<ExtractionResult>(result);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [changeReportOpen, setChangeReportOpen] = useState(true);
+
+  const isMergeMode = !!editedResult.changeReport;
 
   const missingIds = editedResult.initiatives.filter(
     (i) => !i.cpInitiativeId.trim()
@@ -65,13 +72,16 @@ export function ReviewStep({ result, onGenerate, onBack }: ReviewStepProps) {
         className="mb-6"
       >
         <h2 className="mb-2 text-2xl font-bold tracking-tight">
-          Review <span className="gradient-text">Extracted Data</span>
+          Review{" "}
+          <span className="gradient-text">
+            {isMergeMode ? "Merged Data" : "Extracted Data"}
+          </span>
         </h2>
         <p className="text-[var(--muted-foreground)]">
           <span className="font-semibold text-[var(--foreground)]">
             {editedResult.initiatives.length} initiatives
           </span>{" "}
-          extracted from{" "}
+          {isMergeMode ? "after merge for" : "extracted from"}{" "}
           <span className="font-semibold text-[var(--foreground)]">
             {editedResult.projectName}
           </span>
@@ -99,6 +109,15 @@ export function ReviewStep({ result, onGenerate, onBack }: ReviewStepProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Change Report */}
+      {isMergeMode && editedResult.changeReport && (
+        <ChangeReportSection
+          report={editedResult.changeReport}
+          isOpen={changeReportOpen}
+          onToggle={() => setChangeReportOpen((v) => !v)}
+        />
+      )}
 
       {/* Missing IDs alert */}
       {missingIds.length > 0 && (
@@ -132,6 +151,7 @@ export function ReviewStep({ result, onGenerate, onBack }: ReviewStepProps) {
               onToggle={() => toggleExpanded(initiative.id)}
               onUpdate={(updates) => updateInitiative(initiative.id, updates)}
               onRemove={() => removeInitiative(initiative.id)}
+              mergeStatus={getMergeStatus(initiative.id, editedResult.changeReport)}
             />
           </motion.div>
         ))}
@@ -171,12 +191,14 @@ function InitiativeCard({
   onToggle,
   onUpdate,
   onRemove,
+  mergeStatus,
 }: {
   initiative: ExtractedInitiative;
   isExpanded: boolean;
   onToggle: () => void;
   onUpdate: (updates: Partial<ExtractedInitiative>) => void;
   onRemove: () => void;
+  mergeStatus?: "updated" | "added" | "unchanged";
 }) {
   const [editingId, setEditingId] = useState(false);
   const [idValue, setIdValue] = useState(initiative.cpInitiativeId);
@@ -223,6 +245,18 @@ function InitiativeCard({
             >
               {initiative.status}
             </span>
+            {mergeStatus && (
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                  mergeStatus === "updated" && "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20",
+                  mergeStatus === "added" && "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20",
+                  mergeStatus === "unchanged" && "bg-gray-500/10 text-gray-400 ring-1 ring-gray-500/20"
+                )}
+              >
+                {mergeStatus}
+              </span>
+            )}
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
             {initiative.division && <span>{initiative.division}</span>}
@@ -453,4 +487,188 @@ function InitiativeCard({
       </AnimatePresence>
     </div>
   );
+}
+
+function getMergeStatus(
+  initiativeId: string,
+  changeReport?: ChangeReport
+): "updated" | "added" | "unchanged" | undefined {
+  if (!changeReport) return undefined;
+  if (changeReport.matched.some((m) => m.initiativeId === initiativeId)) return "updated";
+  if (changeReport.added.some((a) => a.initiativeId === initiativeId)) return "added";
+  if (changeReport.unchanged.some((u) => u.initiativeId === initiativeId)) return "unchanged";
+  return undefined;
+}
+
+function ChangeReportSection({
+  report,
+  isOpen,
+  onToggle,
+}: {
+  report: ChangeReport;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const totalUpdatedFields = report.matched.reduce((sum, m) => sum + m.changes.length, 0);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-6 rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 overflow-hidden"
+    >
+      {/* Summary bar */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--primary)]/5 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <GitMerge className="h-4 w-4 text-[var(--primary)]" />
+          <span className="text-sm font-semibold">Merge Report</span>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          {report.matched.length > 0 && (
+            <span className="flex items-center gap-1 text-amber-400">
+              <ArrowRight className="h-3 w-3" />
+              {report.matched.length} updated ({totalUpdatedFields} fields)
+            </span>
+          )}
+          {report.added.length > 0 && (
+            <span className="flex items-center gap-1 text-emerald-400">
+              <Plus className="h-3 w-3" />
+              {report.added.length} added
+            </span>
+          )}
+          {report.unchanged.length > 0 && (
+            <span className="text-[var(--muted-foreground)]">
+              {report.unchanged.length} unchanged
+            </span>
+          )}
+          {isOpen ? (
+            <ChevronDown className="h-4 w-4 text-[var(--muted-foreground)]" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)]" />
+          )}
+        </div>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-[var(--border)] px-4 py-3 space-y-4">
+              {/* Updated initiatives */}
+              {report.matched.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <ArrowRight className="h-3 w-3" />
+                    Updated
+                  </h4>
+                  <div className="space-y-2">
+                    {report.matched.map((match) => (
+                      <div
+                        key={match.initiativeId}
+                        className="rounded-lg bg-amber-500/5 border border-amber-500/10 p-3"
+                      >
+                        <div className="flex items-center gap-2 text-sm mb-2">
+                          <span className="text-[var(--muted-foreground)]">
+                            {match.trackerName}
+                          </span>
+                          <ArrowRight className="h-3 w-3 text-[var(--muted-foreground)]" />
+                          <span className="font-medium">{match.cpName}</span>
+                          {match.confidence !== "high" && (
+                            <span
+                              className={cn(
+                                "rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase",
+                                match.confidence === "medium"
+                                  ? "bg-yellow-500/10 text-yellow-400"
+                                  : "bg-red-500/10 text-red-400"
+                              )}
+                            >
+                              {match.confidence} confidence
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          {match.changes.map((change, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center gap-2 text-xs font-mono"
+                            >
+                              <span className="text-[var(--muted-foreground)] min-w-[140px]">
+                                {change.field}
+                              </span>
+                              <span className="text-red-400/70 line-through">
+                                {formatValue(change.from)}
+                              </span>
+                              <ArrowRight className="h-2.5 w-2.5 text-[var(--muted-foreground)]" />
+                              <span className="text-emerald-400">
+                                {formatValue(change.to)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Added initiatives */}
+              {report.added.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Plus className="h-3 w-3" />
+                    Added from Tracker
+                  </h4>
+                  <div className="space-y-1">
+                    {report.added.map((item) => (
+                      <div
+                        key={item.initiativeId}
+                        className="flex items-center gap-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10 px-3 py-2 text-sm"
+                      >
+                        <Plus className="h-3 w-3 text-emerald-400" />
+                        {item.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Unchanged initiatives */}
+              {report.unchanged.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Minus className="h-3 w-3" />
+                    Unchanged
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {report.unchanged.map((item) => (
+                      <span
+                        key={item.initiativeId}
+                        className="rounded-md bg-[var(--muted)]/50 px-2 py-1 text-xs text-[var(--muted-foreground)]"
+                      >
+                        {item.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function formatValue(val: string | number | null): string {
+  if (val === null || val === undefined || val === "") return "(empty)";
+  if (typeof val === "number") return `$${val.toLocaleString()}`;
+  return String(val);
 }

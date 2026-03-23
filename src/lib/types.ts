@@ -53,11 +53,42 @@ export interface ExtractedTargets {
   highTarget: number;
 }
 
+export interface ChangeDetail {
+  field: string;
+  from: string | number | null;
+  to: string | number | null;
+}
+
+export interface MatchedChange {
+  cpName: string;
+  trackerName: string;
+  initiativeId: string;
+  confidence: "high" | "medium" | "low";
+  changes: ChangeDetail[];
+}
+
+export interface AddedInitiative {
+  initiativeId: string;
+  name: string;
+}
+
+export interface UnchangedInitiative {
+  initiativeId: string;
+  name: string;
+}
+
+export interface ChangeReport {
+  matched: MatchedChange[];
+  added: AddedInitiative[];
+  unchanged: UnchangedInitiative[];
+}
+
 export interface ExtractionResult {
   projectName: string;
   initiatives: ExtractedInitiative[];
   warnings: string[];
   rawSummary: string;
+  changeReport?: ChangeReport;
 }
 
 export type AppStep = "upload" | "processing" | "review" | "generating" | "download";

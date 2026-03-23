@@ -32,15 +32,20 @@ export default function Home() {
 
   const currentStepIndex = getStepIndex(step);
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (trackerFile: File, cpExportFile?: File) => {
     setStep("processing");
     setError(null);
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", trackerFile);
+    if (cpExportFile) {
+      formData.append("cpExport", cpExportFile);
+    }
+
+    const endpoint = cpExportFile ? "/api/merge" : "/api/extract";
 
     try {
-      const res = await fetch("/api/extract", {
+      const res = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });
