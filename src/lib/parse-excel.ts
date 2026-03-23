@@ -25,6 +25,8 @@ export async function parseExcelFile(buffer: Buffer, fileName: string): Promise<
   const sheets: ParsedSheet[] = [];
 
   workbook.eachSheet((worksheet) => {
+    // Skip hidden and very hidden sheets
+    if (worksheet.state === "hidden" || worksheet.state === "veryHidden") return;
     const rows: Record<string, string | number | null>[] = [];
     let headers: string[] = [];
     let headerRowIndex = 0;

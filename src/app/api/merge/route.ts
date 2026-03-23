@@ -73,12 +73,13 @@ Return ONLY valid JSON matching this schema:
 }
 
 CRITICAL RULES:
-- NEVER guess or fabricate values. If a field is missing from BOTH sources, set to 0 or empty string and add a warning.
+- NEVER guess or fabricate values. If a field is missing from BOTH sources, set to 0 or empty string.
 - For matched initiatives, ALWAYS use the CP name (it's the canonical name in the system).
 - The changeReport must be exhaustive — list EVERY matched, added, and unchanged initiative.
 - Add warnings for low-confidence matches so the user can verify.
 - Keep rawSummary under 100 chars.
 - Minimize whitespace in output.
+- WARNINGS MUST BE CONCISE — maximum ~10 warnings. Group by issue type, don't repeat per-field per-initiative. Example: "Baselines missing for: Init A, Init B, Init C" instead of one warning per field per initiative. This prevents response truncation on large trackers.
 
 ## DATA
 

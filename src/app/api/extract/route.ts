@@ -49,13 +49,17 @@ Rules:
 
 CRITICAL — Missing data handling:
 - NEVER guess or fabricate values for fields not present in the source data
-- If baseline spend is missing, set annualisedBaseline/baselineFY1/baselineFY2/totalBaselineEstimate/addressableBaselineEstimate to 0 AND add a warning like "Initiative X: baseline spend not found in source data — set to 0"
+- If baseline spend is missing, set annualisedBaseline/baselineFY1/baselineFY2/totalBaselineEstimate/addressableBaselineEstimate to 0
 - If savings figures exist but baselines do not, do NOT use savings as baselines. They are different fields.
-- If midpoint/target estimates are missing, set lowTarget/midTarget/highTarget to 0 AND add a warning
-- If expenditure type (Opex/Capex) is unclear, leave empty and warn
-- If savings methodology is unclear, leave empty and warn
-- Add a warning for EVERY field where you had to use a default/zero because the source data was missing or ambiguous
-- The warnings array is critical — it tells the user what needs manual review. Be thorough.
+- If midpoint/target estimates are missing, set lowTarget/midTarget/highTarget to 0
+- If expenditure type (Opex/Capex) is unclear, leave empty
+- If savings methodology is unclear, leave empty
+
+CRITICAL — Warnings must be CONCISE to avoid response truncation:
+- Do NOT add a separate warning per field per initiative. Instead, GROUP by issue type.
+- GOOD: "Baselines missing for all initiatives — set to 0", "Expenditure type unclear for: Init A, Init B, Init C"
+- BAD: "Initiative A: baseline not found", "Initiative A: expenditure unclear", "Initiative B: baseline not found" (repetitive)
+- Maximum ~10 warnings total. Summarize patterns, don't enumerate every field.
 
 CRITICAL — Column disambiguation:
 - Trackers often have MULTIPLE numeric columns that could look like savings (e.g. "Planned Savings", "Total Savings", "Cost Avoidance", "P&L Impact", plus random/internal columns)
@@ -130,7 +134,7 @@ export async function POST(req: NextRequest) {
         },
         body: JSON.stringify({
           model: "anthropic/claude-sonnet-4-5",
-          max_tokens: 16384,
+          max_tokens: 32768,
           temperature: 0.1,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
