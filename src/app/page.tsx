@@ -9,6 +9,7 @@ import { ReviewStep } from "@/components/review-step";
 import { GeneratingStep } from "@/components/generating-step";
 import { DownloadStep } from "@/components/download-step";
 import { AnimatedGridPattern } from "@/components/ui/animated-grid-pattern";
+import { FeedbackButton } from "@/components/feedback-button";
 import { cn } from "@/lib/utils";
 
 const steps = [
@@ -299,6 +300,16 @@ export default function Home() {
           )}
         </AnimatePresence>
       </div>
+
+      <FeedbackButton
+        pageState={{
+          step,
+          projectName: extractionResult?.projectName,
+          initiativeCount: extractionResult?.initiatives.length,
+          hasChangeReport: !!extractionResult?.changeReport,
+          error,
+        }}
+      />
     </main>
   );
 }
