@@ -51,11 +51,25 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Extraction failed");
+        let errorMsg = `Request failed (${res.status})`;
+        try {
+          const err = await res.json();
+          errorMsg = err.error || errorMsg;
+        } catch {
+          const text = await res.text();
+          if (res.status === 504 || text.includes("timeout") || text.includes("FUNCTION_INVOCATION_TIMEOUT")) {
+            errorMsg = "The AI took too long to respond. Try uploading a smaller file or fewer sheets.";
+          }
+        }
+        throw new Error(errorMsg);
       }
 
-      const result: ExtractionResult = await res.json();
+      let result: ExtractionResult;
+      try {
+        result = await res.json();
+      } catch {
+        throw new Error("Server returned an invalid response. The file may be too large for the AI to process.");
+      }
       setExtractionResult(result);
       setStep("review");
     } catch (err) {

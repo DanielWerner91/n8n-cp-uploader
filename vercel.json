@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "src/app/api/extract/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/merge/route.ts": {
+      "maxDuration": 120
+    }
+  }
+}
