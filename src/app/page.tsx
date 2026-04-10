@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import posthog from "posthog-js";
 import type { AppStep, ExtractionResult } from "@/lib/types";
 import { UploadStep } from "@/components/upload-step";
 import { ProcessingStep } from "@/components/processing-step";
@@ -34,6 +35,10 @@ export default function Home() {
   const currentStepIndex = getStepIndex(step);
 
   const handleFileUpload = async (trackerFile: File, cpExportFile?: File) => {
+    posthog.capture("file_uploaded", {
+      mode: cpExportFile ? "merge" : "generate",
+      file_name: trackerFile.name,
+    });
     setStep("processing");
     setError(null);
 
@@ -98,6 +103,9 @@ export default function Home() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
+      posthog.capture("cp_format_generated", {
+        initiatives_count: result.initiatives?.length ?? 0,
+      });
       setStep("download");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed");
